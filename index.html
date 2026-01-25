@@ -5,12 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Germany MS Command Center</title>
 
+<!-- Tailwind -->
 <script src="https://cdn.tailwindcss.com"></script>
+
+<!-- React + ReactDOM -->
 <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+
+<!-- Babel -->
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-<!-- 🔥 Firebase (CDN / COMPAT – NO LOGIC CHANGE) -->
+<!-- 🔥 Firebase (COMPAT CDN – SAFE) -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -32,11 +37,31 @@
 
 <style>
   body { background-color: #f3f4f6; }
-  .dark-mode { background-color: #1f2937; color: white; }
-  .dark-mode .card { background-color: #374151; border-color: #4b5563; }
-  .dark-mode input, .dark-mode select {
+
+  .dark-mode {
+    background-color: #1f2937;
+    color: #f9fafb;
+  }
+
+  .card {
+    border-radius: 0.5rem;
+  }
+
+  .dark-mode .card {
     background-color: #374151;
-    color: white;
+    border-color: #4b5563;
+    color: #f9fafb;
+  }
+
+  .dark-mode .card * {
+    color: #f9fafb;
+  }
+
+  .dark-mode input,
+  .dark-mode select,
+  .dark-mode textarea {
+    background-color: #374151;
+    color: #f9fafb;
     border-color: #4b5563;
   }
 </style>
@@ -48,22 +73,29 @@
 <script type="text/babel">
 const { useState, useEffect } = React;
 
+// ICONS
 const Icons = {
-  Dashboard: "📊", Grid: "📅", Uni: "🏛️",
-  SOP: "📝", Sun: "☀️", Moon: "🌙",
-  Add: "➕", Delete: "🗑️"
+  Dashboard: "📊",
+  Uni: "🏛️",
+  Tasks: "📅",
+  SOP: "📝",
+  Sun: "☀️",
+  Moon: "🌙",
+  Add: "➕",
+  Delete: "🗑️"
 };
 
+// INITIAL DATA
 const initialData = {
   tasks: [
-    { id: 1, title: 'APS Certificate', dueDate: '2025-03-01', status: 'In Progress' },
-    { id: 2, title: 'IELTS Exam', dueDate: '2025-04-15', status: 'Not Started' }
+    { id: 1, title: "APS Certificate", dueDate: "2025-03-01", status: "In Progress" },
+    { id: 2, title: "IELTS Exam", dueDate: "2025-04-15", status: "Not Started" }
   ],
   universities: [
-    { id: 1, name: 'TU Munich', course: 'M.Sc. Informatics', location: 'Munich', semesterFee: '152', deadline: '2025-05-31', status: 'Shortlisted' },
-    { id: 2, name: 'RWTH Aachen', course: 'Software Systems', location: 'Aachen', semesterFee: '300', deadline: '2025-07-15', status: 'Not Started' }
+    { id: 1, name: "TU Munich", course: "M.Sc. Informatics", location: "Munich", semesterFee: "152", deadline: "2025-05-31", status: "Shortlisted" },
+    { id: 2, name: "RWTH Aachen", course: "Software Systems", location: "Aachen", semesterFee: "300", deadline: "2025-07-15", status: "Not Started" }
   ],
-  sops: [{ id: 1, content: 'I have always been fascinated by...' }]
+  sops: [{ id: 1, content: "I have always been fascinated by..." }]
 };
 
 function GermanyApp() {
@@ -71,11 +103,13 @@ function GermanyApp() {
   const [view, setView] = useState("dashboard");
   const [darkMode, setDarkMode] = useState(false);
 
+  // Load
   useEffect(() => {
     const saved = localStorage.getItem("germany-ms-db");
     if (saved) setData(JSON.parse(saved));
   }, []);
 
+  // Save
   useEffect(() => {
     localStorage.setItem("germany-ms-db", JSON.stringify(data));
   }, [data]);
@@ -85,14 +119,14 @@ function GermanyApp() {
     : "bg-gray-100 min-h-screen text-gray-900";
 
   const card = darkMode
-    ? "card p-6 rounded-lg shadow-md"
-    : "bg-white p-6 rounded-lg shadow-md border";
+    ? "card p-6 shadow-md border"
+    : "card bg-white p-6 shadow-md border";
 
   return (
     <div className={theme}>
       {/* HEADER */}
       <div className={`${darkMode ? "bg-gray-800" : "bg-white"} border-b sticky top-0 z-50`}>
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold">🇩🇪 Germany MS Tracker</h1>
             <p className="text-xs opacity-60">Winter 2026 Intake</p>
@@ -103,75 +137,4 @@ function GermanyApp() {
         </div>
 
         <div className="max-w-7xl mx-auto px-4 flex gap-6 text-sm font-medium">
-          {[
-            ["dashboard", Icons.Dashboard],
-            ["universities", Icons.Uni],
-            ["tasks", Icons.Grid],
-            ["sop", Icons.SOP]
-          ].map(([id, icon]) => (
-            <button
-              key={id}
-              onClick={() => setView(id)}
-              className={view === id ? "border-b-2 border-blue-600 text-blue-600 py-2" : "py-2 opacity-60"}
-            >
-              {icon} {id.toUpperCase()}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* CONTENT */}
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        {view === "dashboard" && (
-          <div className="grid md:grid-cols-3 gap-6">
-            <div className={card}>Universities: {data.universities.length}</div>
-            <div className={card}>Tasks: {data.tasks.length}</div>
-            <div className={card}>
-              Next Deadline: {data.universities.map(u => u.deadline).filter(Boolean)[0] || "-"}
-            </div>
-          </div>
-        )}
-
-        {view === "universities" && (
-          <div className={card}>
-            {data.universities.map(u => (
-              <div key={u.id} className="border-b py-2">
-                <b>{u.name}</b> — {u.course} — {u.deadline}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {view === "tasks" && (
-          <div className={card}>
-            {data.tasks.map(t => (
-              <div key={t.id} className="flex justify-between border-b py-2">
-                <span>{t.title}</span>
-                <span className="text-sm">{t.dueDate}</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {view === "sop" && (
-          <div className={card}>
-            <textarea
-              className="w-full h-64 p-4 border rounded"
-              value={data.sops[0].content}
-              onChange={e => {
-                const s = [...data.sops];
-                s[0].content = e.target.value;
-                setData({ ...data, sops: s });
-              }}
-            />
-          </div>
-        )}
-      </main>
-    </div>
-  );
-}
-
-ReactDOM.createRoot(document.getElementById("root")).render(<GermanyApp />);
-</script>
-</body>
-</html>
+          <button onClick={() => setView("dashboard")} className={view==="dash
