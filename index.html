@@ -3,190 +3,423 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Germany MS Command Center</title>
+    <title>Germany MS Command Center - Cloud Live</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     
     <style>
-        body { background-color: #f3f4f6; }
-        .dark-mode { background-color: #1f2937; color: white; }
-        .dark-mode .card { background-color: #374151; border-color: #4b5563; }
-        .dark-mode input, .dark-mode select { background-color: #374151; color: white; border-color: #4b5563; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
+
+        /* --- CURSORS --- */
+        body { font-family: 'Inter', sans-serif; cursor: default; }
+        
+        /* Mac Style White Hand for clickable items */
+        button, a, input[type="checkbox"], select, .resizer, .card-hover, th, label {
+            cursor: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M8 2C8 1.45 8.45 1 9 1H10C10.55 1 11 1.45 11 2V8H11.5V3.5C11.5 2.95 11.95 2.5 12.5 2.5H13.5C14.05 2.5 14.5 2.95 14.5 3.5V8H15V3C15 2.45 15.45 2 16 2H17C17.55 2 18 2.45 18 3V11.5C18 15.5 16 19 12 19H10C6 19 4 15 4 12V8.5C4 7.95 4.45 7.5 5 7.5H6C6.55 7.5 7 7.95 7 8.5V10H7.5V6.5C7.5 5.95 7.95 5.5 8.5 5.5H9.5C10.05 5.5 10.5 5.95 10.5 6.5V2H8Z' fill='white' stroke='black' stroke-width='1.5'/%3E%3C/svg%3E"), pointer;
+        }
+
+        /* Inputs */
+        input[type="text"], input[type="date"], textarea { cursor: text; }
+
+        /* --- THEME --- */
+        body { 
+            background-color: #020617; 
+            color: #f1f5f9; 
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.1) 0px, transparent 50%), 
+                radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.1) 0px, transparent 50%);
+            background-attachment: fixed;
+            min-height: 100vh;
+        }
+
+        .card {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(56, 189, 248, 0.1);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            border-radius: 16px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .card:hover { border-color: rgba(56, 189, 248, 0.3); box-shadow: 0 0 20px rgba(56, 189, 248, 0.15); transform: translateY(-2px); }
+
+        /* Form Elements */
+        input, select, textarea {
+            background: #0f172a; color: #f8fafc; border: 1px solid #1e293b; transition: 0.2s;
+        }
+        input:focus, select:focus, textarea:focus {
+            background: #1e293b; border-color: #06b6d4; box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.2); outline: none;
+        }
+        input:disabled, select:disabled, textarea:disabled {
+            background: rgba(15, 23, 42, 0.5); color: #64748b; border-color: transparent;
+        }
+
+        /* Utils */
+        .resizer {
+            display: inline-block; background: #64748b; width: 6px; height: 20px;
+            position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+            border-radius: 3px; opacity: 0.2; transition: 0.2s; z-index: 20; cursor: col-resize;
+        }
+        th:hover .resizer { opacity: 1; background: #06b6d4; }
+        .resizer:hover { opacity: 1; background: #22d3ee; height: 100%; }
+        
+        .zen-mode { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 999; padding: 40px; background: #020617; }
+        .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
-    <script type="text/babel">
-        const { useState, useEffect, useMemo } = React;
+    <script type="text/babel" data-type="module">
+        // --- FIREBASE IMPORTS (v9 Modular SDK) ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
-        // --- ICONS (Using Emojis to keep this file simple and copy-pasteable) ---
+        // --- YOUR CONFIGURATION ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyCmCNcJwkEWd9Kc4AymMFLYe65oqpxggTk",
+            authDomain: "tracker-c3912.firebaseapp.com",
+            projectId: "tracker-c3912",
+            storageBucket: "tracker-c3912.firebasestorage.app",
+            messagingSenderId: "84396429933",
+            appId: "1:84396429933:web:a64708632d20c73ce62564"
+        };
+
+        // Initialize Firebase & Database
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        
+        // This ID ensures all your devices look at the SAME spot in the database
+        const DOC_ID = "germany-master-data"; 
+
+        const { useState, useEffect, useRef } = React;
+
         const Icons = {
-            Dashboard: "📊", Grid: "📅", Uni: "🏛️", Todo: "✅", SOP: "📝", LOR: "🤝", Notes: "🧠", 
-            Sun: "☀️", Moon: "🌙", Add: "➕", Delete: "🗑️", Search: "🔍"
+            Dashboard: "📊", Grid: "✅", Uni: "🏛️", Docs: "📂", Wallet: "🗂️", Settings: "⚙️",
+            Add: "➕", Delete: "🗑️", Lock: "🔒", Unlock: "🔓", Link: "🔗", Magic: "✨", Cloud: "☁️"
         };
 
-        // --- INITIAL DATA ---
-        const initialData = {
-            tasks: [
-                { id: 1, title: 'APS Certificate', category: 'APS', dueDate: '2025-03-01', priority: 'High', status: 'In Progress' },
-                { id: 2, title: 'IELTS Exam', category: 'Exam', dueDate: '2025-04-15', priority: 'High', status: 'Not Started' },
-            ],
-            universities: [
-                { id: 1, name: 'TU Munich', course: 'M.Sc. Informatics', location: 'Munich', fees: '0', semesterFee: '152', deadline: '2025-05-31', status: 'Shortlisted', notes: 'Requires GRE' },
-                { id: 2, name: 'RWTH Aachen', course: 'Software Systems', location: 'Aachen', fees: '0', semesterFee: '300', deadline: '2025-07-15', status: 'Not Started', notes: 'Check language reqs' }
-            ],
-            sops: [{ id: 1, title: 'Main Motivation', content: 'I have always been fascinated by...' }],
-            lors: [{ id: 1, name: 'Prof. Kumar', status: 'Asked' }],
-            notes: [],
-            settings: { theme: 'light' }
+        const defaultData = {
+            tasks: [{ id: 1, title: 'Welcome to Cloud Sync!', category: 'General', dueDate: '', priority: 'High', status: 'Not Started' }],
+            universities: [{ id: 1, name: 'TU Munich', course: 'Informatics', location: 'Munich', fees: '0', semesterFee: '152', portalId: '', portalLink: '', deadline: '2026-05-31', status: 'Shortlisted', locked: false }],
+            documents: [],
+            sops: { content: 'Start writing your SOP here...', locked: false },
         };
 
-        // --- MAIN APP COMPONENT ---
         const GermanyApp = () => {
-            const [data, setData] = useState(initialData);
+            const [data, setData] = useState(null); // Null initially to show loading state
             const [view, setView] = useState('dashboard');
-            const [darkMode, setDarkMode] = useState(false);
+            const [zenMode, setZenMode] = useState(false);
+            const [colWidths, setColWidths] = useState({ name: 180, course: 160, location: 120, fees: 100, portal: 140, deadline: 130, status: 140 });
+            const [timeLeft, setTimeLeft] = useState('');
+            const [status, setStatus] = useState('Connecting...');
 
-            // Load from Local Storage on start
+            // --- 2. CLOUD SYNC LOGIC ---
             useEffect(() => {
-                const saved = localStorage.getItem('germany-ms-db');
-                if (saved) setData(JSON.parse(saved));
+                // Subscribe to live changes from Cloud
+                const unsub = onSnapshot(doc(db, "users", DOC_ID), (doc) => {
+                    if (doc.exists()) {
+                        setData(doc.data());
+                        setStatus('Synced ☁️');
+                    } else {
+                        // Create initial data if it doesn't exist
+                        setDoc(doc.ref, defaultData);
+                        setData(defaultData);
+                        setStatus('Created New ☁️');
+                    }
+                }, (error) => {
+                    console.error("Sync Error:", error);
+                    // Fallback to local storage if offline/error
+                    const saved = localStorage.getItem('germany-ms-offline');
+                    if (saved) setData(JSON.parse(saved));
+                    else setData(defaultData);
+                    setStatus('Offline ⚠️');
+                });
+                return () => unsub();
             }, []);
 
-            // Save to Local Storage on change
+            // Auto-Save to Cloud when data changes
             useEffect(() => {
-                localStorage.setItem('germany-ms-db', JSON.stringify(data));
+                if (!data) return;
+                
+                // Save to LocalStorage as backup immediately
+                localStorage.setItem('germany-ms-offline', JSON.stringify(data));
+
+                // Save to Cloud (Debounced)
+                const timer = setTimeout(() => {
+                    if (status.includes('Offline')) return;
+                    setDoc(doc(db, "users", DOC_ID), data).then(() => setStatus('Saved ✅'));
+                }, 1500); // Wait 1.5s after typing stops to save
+                
+                return () => clearTimeout(timer);
             }, [data]);
 
-            // Helper to update state
-            const updateUni = (id, field, value) => {
-                setData(prev => ({
-                    ...prev,
-                    universities: prev.universities.map(u => u.id === id ? { ...u, [field]: value } : u)
-                }));
+            // --- COUNTDOWN ---
+            useEffect(() => {
+                if(!data) return;
+                const timer = setInterval(() => {
+                    const deadlines = data.universities.map(u => u.deadline).filter(d => d && new Date(d) > new Date()).sort((a,b) => new Date(a) - new Date(b));
+                    if(deadlines.length > 0) {
+                        const target = new Date(deadlines[0]);
+                        const diff = target - new Date();
+                        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                        setTimeLeft(`${days} Days Left`);
+                    } else { setTimeLeft('No pending deadlines'); }
+                }, 1000);
+                return () => clearInterval(timer);
+            }, [data]);
+
+            // --- ACTIONS ---
+            const triggerConfetti = () => confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, colors: ['#22d3ee', '#e879f9', '#4ade80'] });
+            
+            const updateUni = (id, field, value) => setData(prev => ({ ...prev, universities: prev.universities.map(u => u.id === id ? { ...u, [field]: value } : u) }));
+            const toggleUniLock = (id) => setData(prev => ({ ...prev, universities: prev.universities.map(u => u.id === id ? { ...u, locked: !u.locked } : u) }));
+            const addUni = () => setData(prev => ({ ...prev, universities: [...prev.universities, { id: Date.now(), name: 'New Uni', course: 'CS', location: '', fees: '0', semesterFee: '', portalId: '', portalLink: '', deadline: '', status: 'Shortlisted', locked: false }] }));
+            const deleteUni = (id) => { if(confirm("Delete?")) setData(prev => ({...prev, universities: prev.universities.filter(u => u.id !== id)})); };
+
+            const updateTask = (id, field, value) => {
+                if(value === 'Done') triggerConfetti();
+                setData(prev => ({ ...prev, tasks: prev.tasks.map(t => t.id === id ? { ...t, [field]: value } : t) }));
+            };
+            const addTask = () => setData(prev => ({ ...prev, tasks: [...prev.tasks, { id: Date.now(), title: 'New Task', category: 'General', dueDate: '', priority: 'Medium', status: 'Not Started' }] }));
+            const deleteTask = (id) => { if(confirm("Delete?")) setData(prev => ({...prev, tasks: prev.tasks.filter(t => t.id !== id)})); };
+
+            const updateDoc = (id, field, value) => {
+                if(value === 'Done') triggerConfetti();
+                setData(prev => ({ ...prev, documents: prev.documents.map(d => d.id === id ? { ...d, [field]: value } : d) }));
+            };
+            const addDoc = () => setData(prev => ({ ...prev, documents: [...prev.documents, { id: Date.now(), name: 'New Doc', type: 'General', refNumber: '', status: 'Not Started', notes: '' }] }));
+            const deleteDoc = (id) => { if(confirm("Delete?")) setData(prev => ({...prev, documents: prev.documents.filter(d => d.id !== id)})); };
+
+            const toggleSopLock = () => setData(prev => ({ ...prev, sops: { ...prev.sops, locked: !prev.sops.locked } }));
+
+            const handleResize = (key) => (e) => {
+                e.stopPropagation(); e.preventDefault();
+                const startX = e.clientX; const startWidth = colWidths[key];
+                const onMouseMove = (ev) => requestAnimationFrame(() => setColWidths(prev => ({ ...prev, [key]: Math.max(50, startWidth + (ev.clientX - startX)) })));
+                const onMouseUp = () => { document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onMouseUp); };
+                document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onMouseUp);
             };
 
-            const addUni = () => {
-                const newUni = { 
-                    id: Date.now(), name: 'New University', course: 'CS', location: 'City', 
-                    fees: '0', semesterFee: '0', deadline: '', status: 'Shortlisted', notes: '' 
-                };
-                setData(prev => ({ ...prev, universities: [...prev.universities, newUni] }));
-            };
-             const deleteUni = (id) => {
-                if(confirm("Delete this university?")) {
-                    setData(prev => ({...prev, universities: prev.universities.filter(u => u.id !== id)}));
-                }
+            const getStatusColor = (status) => {
+                if(['Admitted', 'Done', 'Received', 'Ready'].includes(status)) return 'bg-green-500/20 text-green-300 border border-green-500/50';
+                if(['Rejected'].includes(status)) return 'bg-red-500/20 text-red-300 border border-red-500/50';
+                if(['Applied', 'In Progress'].includes(status)) return 'bg-blue-500/20 text-blue-300 border border-blue-500/50';
+                return 'bg-gray-800 text-gray-400 border border-gray-700';
             };
 
-            const themeClass = darkMode ? "dark-mode min-h-screen transition-colors" : "bg-gray-100 min-h-screen transition-colors text-gray-900";
-            const cardClass = darkMode ? "card p-6 rounded-lg shadow-md" : "bg-white p-6 rounded-lg shadow-md border border-gray-200";
+            if (!data) return (
+                <div className="min-h-screen flex flex-col items-center justify-center bg-[#020617] text-cyan-500">
+                    <div className="text-4xl mb-4 animate-bounce">☁️</div>
+                    <div className="text-xl font-mono animate-pulse">Syncing with Cloud...</div>
+                </div>
+            );
 
             return (
-                <div className={themeClass}>
-                    {/* HEADER */}
-                    <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-b sticky top-0 z-50`}>
-                        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-                            <div>
-                                <h1 className="text-2xl font-bold flex items-center gap-2">🇩🇪 Germany MS Tracker</h1>
-                                <p className="text-xs opacity-60">Winter 2026 Intake</p>
+                <div className="min-h-screen pb-10 selection:bg-cyan-500 selection:text-white">
+                    {/* NAV */}
+                    <nav className="bg-gray-900/60 border-b border-gray-800 sticky top-0 z-50 backdrop-blur-xl">
+                        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <span className="text-3xl filter drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]">🇩🇪</span>
+                                <div>
+                                    <h1 className="font-bold text-lg leading-none tracking-tight text-gray-100">MS Command Center</h1>
+                                    <div className="flex items-center gap-2 mt-0.5">
+                                        <div className={`w-2 h-2 rounded-full ${status.includes('Synced') || status.includes('Saved') ? 'bg-green-500 shadow-[0_0_8px_#22c55e]' : 'bg-yellow-500'}`}></div>
+                                        <p className="text-[10px] text-cyan-400 font-mono tracking-widest uppercase">{status}</p>
+                                    </div>
+                                </div>
                             </div>
-                            <button onClick={() => setDarkMode(!darkMode)} className="text-xl p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700">
-                                {darkMode ? Icons.Sun : Icons.Moon}
-                            </button>
+                            <div className="hidden md:flex bg-gray-800/80 rounded-lg p-1 border border-gray-700">
+                                {[{id: 'dashboard', icon: Icons.Dashboard}, {id: 'universities', icon: Icons.Uni}, {id: 'tasks', icon: Icons.Grid}, {id: 'docs', icon: Icons.Wallet}, {id: 'sop', icon: Icons.Docs}].map(tab => (
+                                    <button key={tab.id} onClick={() => setView(tab.id)} className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-all duration-300 ${view === tab.id ? 'bg-gray-700 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.3)] scale-105' : 'text-gray-400 hover:text-gray-200'}`}>
+                                        {tab.icon} <span className="ml-1 capitalize">{tab.id === 'docs' ? 'Wallet' : tab.id}</span>
+                                    </button>
+                                ))}
+                            </div>
                         </div>
-                        {/* NAV TABS */}
-                        <div className="max-w-7xl mx-auto px-4 flex gap-6 overflow-x-auto text-sm font-medium">
-                            {[
-                                {id: 'dashboard', label: 'Dashboard', icon: Icons.Dashboard},
-                                {id: 'universities', label: 'Universities', icon: Icons.Uni},
-                                {id: 'tasks', label: 'Tasks', icon: Icons.Grid},
-                                {id: 'sop', label: 'SOP & LOR', icon: Icons.SOP},
-                            ].map(tab => (
-                                <button 
-                                    key={tab.id}
-                                    onClick={() => setView(tab.id)}
-                                    className={`py-3 border-b-2 flex items-center gap-2 ${view === tab.id ? 'border-blue-600 text-blue-600' : 'border-transparent opacity-60'}`}
-                                >
-                                    <span>{tab.icon}</span> {tab.label}
+                         <div className="md:hidden flex overflow-x-auto px-4 pb-3 gap-2 scrollbar-hide">
+                             {[{id: 'dashboard', icon: Icons.Dashboard}, {id: 'universities', icon: Icons.Uni}, {id: 'tasks', icon: Icons.Grid}, {id: 'docs', icon: Icons.Wallet}, {id: 'sop', icon: Icons.Docs}].map(tab => (
+                                <button key={tab.id} onClick={() => setView(tab.id)} className={`flex-shrink-0 px-3 py-1.5 text-xs font-bold rounded-full border transition-colors ${view === tab.id ? 'bg-cyan-600 text-white border-cyan-600' : 'bg-transparent border-gray-700 text-gray-400'}`}>
+                                    {tab.icon} {tab.id.toUpperCase()}
                                 </button>
                             ))}
                         </div>
-                    </div>
+                    </nav>
 
-                    {/* MAIN CONTENT */}
-                    <main className="max-w-7xl mx-auto px-4 py-8">
-                        
-                        {/* --- DASHBOARD VIEW --- */}
+                    <main className="max-w-7xl mx-auto px-4 py-8 animate-fade-in">
+                        {/* --- DASHBOARD --- */}
                         {view === 'dashboard' && (
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div className={`${cardClass} border-l-4 border-blue-500`}>
-                                    <h3 className="opacity-70 text-sm font-bold uppercase">Universities Shortlisted</h3>
-                                    <p className="text-4xl font-bold mt-2">{data.universities.length}</p>
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    <div className="card p-5 border-l-4 border-l-blue-500 bg-gradient-to-br from-gray-900 to-blue-900/10">
+                                        <h3 className="text-xs font-bold text-blue-300 uppercase tracking-widest">Shortlisted</h3>
+                                        <div className="text-3xl font-bold mt-1 text-blue-400">{data.universities.length}</div>
+                                    </div>
+                                    <div className="card p-5 border-l-4 border-l-green-500 bg-gradient-to-br from-gray-900 to-green-900/10">
+                                        <h3 className="text-xs font-bold text-green-300 uppercase tracking-widest">Applied</h3>
+                                        <div className="text-3xl font-bold mt-1 text-green-400">{data.universities.filter(u => u.status === 'Applied').length}</div>
+                                    </div>
+                                    <div className="card p-5 border-l-4 border-l-purple-500 bg-gradient-to-br from-gray-900 to-purple-900/10">
+                                        <h3 className="text-xs font-bold text-purple-300 uppercase tracking-widest">Docs Ready</h3>
+                                        <div className="text-3xl font-bold mt-1 text-purple-400">{data.documents.filter(d => ['Done', 'Received', 'Ready'].includes(d.status)).length}</div>
+                                    </div>
+                                    <div className="card p-5 border-l-4 border-l-yellow-500 bg-gradient-to-br from-gray-900 to-yellow-900/10">
+                                        <h3 className="text-xs font-bold text-yellow-300 uppercase tracking-widest">Pending Tasks</h3>
+                                        <div className="text-3xl font-bold mt-1 text-yellow-400">{data.tasks.filter(t => t.status !== 'Done').length}</div>
+                                    </div>
                                 </div>
-                                <div className={`${cardClass} border-l-4 border-green-500`}>
-                                    <h3 className="opacity-70 text-sm font-bold uppercase">Applications Done</h3>
-                                    <p className="text-4xl font-bold mt-2">{data.universities.filter(u => u.status === 'Applied').length}</p>
-                                </div>
-                                <div className={`${cardClass} border-l-4 border-yellow-500`}>
-                                    <h3 className="opacity-70 text-sm font-bold uppercase">Days to Next Deadline</h3>
-                                    <p className="text-4xl font-bold mt-2">
-                                        {(() => {
-                                            const dates = data.universities
-                                                .map(u => u.deadline)
-                                                .filter(d => d)
-                                                .map(d => new Date(d))
-                                                .filter(d => d > new Date())
-                                                .sort((a,b) => a - b);
-                                            if (dates.length === 0) return "-";
-                                            return Math.ceil((dates[0] - new Date()) / (1000 * 60 * 60 * 24));
-                                        })()}
-                                    </p>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {/* DEADLINE TICKER */}
+                                    <div className="card p-6 bg-gray-900/40 border border-red-900/30">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h3 className="text-xl font-bold flex items-center gap-2 text-gray-100">
+                                                ⏱️ Next Deadline
+                                            </h3>
+                                            <span className="text-xs text-red-400 font-mono bg-red-900/20 px-2 py-1 rounded border border-red-900/50">LIVE</span>
+                                        </div>
+                                        <div className="text-center py-6">
+                                            <div className="text-4xl md:text-5xl font-mono font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-orange-400 tracking-tighter">
+                                                {timeLeft}
+                                            </div>
+                                            <p className="text-sm text-gray-500 mt-2 uppercase tracking-wide font-bold">Time remaining</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="card p-6 bg-gray-900/40">
+                                        <h3 className="text-xl font-bold mb-4 text-gray-100">{Icons.Grid} Quick Tasks</h3>
+                                        <div className="space-y-3">
+                                            {data.tasks.filter(t => t.status !== 'Done').slice(0, 3).map(task => (
+                                                <div key={task.id} className="flex items-center gap-3 p-3 rounded-lg bg-gray-800/30 border border-gray-700/50">
+                                                    <div className={`w-2 h-2 rounded-full ${task.priority === 'High' ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]' : 'bg-green-500'}`}></div>
+                                                    <div className="flex-1 font-medium text-gray-200">{task.title}</div>
+                                                </div>
+                                            ))}
+                                            {data.tasks.filter(t => t.status !== 'Done').length === 0 && <p className="opacity-50">All tasks completed.</p>}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         )}
 
-                        {/* --- UNIVERSITY VIEW (NEW FEATURE) --- */}
+                        {/* --- UNIVERSITIES --- */}
                         {view === 'universities' && (
                             <div className="space-y-4">
                                 <div className="flex justify-between items-center">
-                                    <h2 className="text-xl font-bold">University Shortlist</h2>
-                                    <button onClick={addUni} className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 flex items-center gap-2">
-                                        {Icons.Add} Add University
+                                    <h2 className="text-2xl font-bold text-gray-100">University Shortlist</h2>
+                                    <button onClick={addUni} className="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2 rounded-lg shadow-[0_0_15px_rgba(6,182,212,0.4)] flex items-center gap-2 transition-all font-bold">
+                                        {Icons.Add} Add Uni
                                     </button>
                                 </div>
-                                <div className="overflow-x-auto rounded-lg shadow border border-gray-200 dark:border-gray-700">
-                                    <table className={`w-full text-sm text-left ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                                        <thead className={`text-xs uppercase ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
-                                            <tr>
-                                                <th className="px-4 py-3">University Name</th>
-                                                <th className="px-4 py-3">Course</th>
-                                                <th className="px-4 py-3">Location</th>
-                                                <th className="px-4 py-3">Fees (€/sem)</th>
-                                                <th className="px-4 py-3">Deadline</th>
-                                                <th className="px-4 py-3">Status</th>
-                                                <th className="px-4 py-3">Actions</th>
-                                            </tr>
+                                <div className="card overflow-hidden">
+                                    <div className="overflow-x-auto pb-12">
+                                        <table className="w-full text-sm text-left">
+                                            <thead className="text-xs uppercase font-bold border-b border-gray-800 text-gray-400">
+                                                <tr>
+                                                    {/* Added 'location' and 'fees' back into the headers */}
+                                                    {['name', 'course', 'location', 'fees', 'portal', 'deadline', 'status'].map(k => (
+                                                        <th key={k} className="px-4 py-4 relative group select-none" style={{width: colWidths[k], minWidth: colWidths[k]}}>
+                                                            {k} <div className="resizer" onMouseDown={handleResize(k)}></div>
+                                                        </th>
+                                                    ))}
+                                                    <th className="px-4 py-4 text-center">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-800/50">
+                                                {data.universities.map(uni => (
+                                                    <tr key={uni.id} className={`${uni.locked ? 'bg-gray-900/30' : 'hover:bg-gray-800/40'}`}>
+                                                        <td className="p-2"><input disabled={uni.locked} className="w-full p-2 rounded bg-transparent" value={uni.name} onChange={e => updateUni(uni.id, 'name', e.target.value)} /></td>
+                                                        <td className="p-2"><input disabled={uni.locked} className="w-full p-2 rounded bg-transparent" value={uni.course} onChange={e => updateUni(uni.id, 'course', e.target.value)} /></td>
+                                                        
+                                                        {/* Restored Location Input */}
+                                                        <td className="p-2"><input disabled={uni.locked} className="w-full p-2 rounded bg-transparent" value={uni.location} onChange={e => updateUni(uni.id, 'location', e.target.value)} /></td>
+                                                        
+                                                        {/* Restored Fees Input */}
+                                                        <td className="p-2"><input disabled={uni.locked} className="w-full p-2 rounded bg-transparent" placeholder="0" value={uni.semesterFee} onChange={e => updateUni(uni.id, 'semesterFee', e.target.value)} /></td>
+
+                                                        {/* Portal Keyring */}
+                                                        <td className="p-2">
+                                                            <div className="flex flex-col gap-1">
+                                                                <input disabled={uni.locked} className="w-full p-1 text-xs font-mono text-cyan-400 bg-gray-900/50 rounded border border-gray-700/50" placeholder="App ID..." value={uni.portalId} onChange={e => updateUni(uni.id, 'portalId', e.target.value)} />
+                                                                <input disabled={uni.locked} className="w-full p-1 text-xs text-gray-400 bg-transparent rounded" placeholder="https://..." value={uni.portalLink} onChange={e => updateUni(uni.id, 'portalLink', e.target.value)} />
+                                                            </div>
+                                                        </td>
+
+                                                        <td className="p-2"><input disabled={uni.locked} className="w-full p-2 rounded bg-transparent font-mono" type="date" value={uni.deadline} onChange={e => updateUni(uni.id, 'deadline', e.target.value)} /></td>
+                                                        <td className="p-2">
+                                                            <select disabled={uni.locked} className={`w-full p-1.5 rounded text-xs font-bold uppercase cursor-pointer ${getStatusColor(uni.status)}`} value={uni.status} onChange={e => updateUni(uni.id, 'status', e.target.value)}>
+                                                                <option className="bg-gray-900">Shortlisted</option><option className="bg-gray-900">Applied</option><option className="bg-gray-900">Admitted</option><option className="bg-gray-900">Rejected</option>
+                                                            </select>
+                                                        </td>
+                                                        <td className="p-2 flex justify-center gap-2">
+                                                            <button onClick={() => toggleUniLock(uni.id)} className={`p-2 rounded ${uni.locked ? 'text-red-400 bg-red-900/20' : 'text-gray-500 hover:text-cyan-400'}`}>{uni.locked ? Icons.Lock : Icons.Unlock}</button>
+                                                            {!uni.locked && <button onClick={() => deleteUni(uni.id)} className="text-gray-500 hover:text-red-400 p-2">{Icons.Delete}</button>}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* --- TASKS --- */}
+                        {view === 'tasks' && (
+                            <div className="space-y-4">
+                                <div className="flex justify-between items-center">
+                                    <h2 className="text-2xl font-bold text-gray-100">Tasks</h2>
+                                    <button onClick={addTask} className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-lg shadow-[0_0_15px_rgba(147,51,234,0.4)] flex items-center gap-2 font-bold">
+                                        {Icons.Add} Add Task
+                                    </button>
+                                </div>
+                                <div className="card divide-y divide-gray-800/50">
+                                    {data.tasks.map(task => (
+                                        <div key={task.id} className="flex flex-col md:flex-row md:items-center gap-4 p-4 group hover:bg-gray-800/30">
+                                            <div className="flex items-center gap-4 flex-1">
+                                                <input type="checkbox" checked={task.status === 'Done'} onChange={() => updateTask(task.id, 'status', task.status === 'Done' ? 'Not Started' : 'Done')} className="w-5 h-5 cursor-pointer accent-cyan-500 rounded bg-gray-800 border-gray-700" />
+                                                <input className={`flex-1 bg-transparent border-none text-lg font-medium text-gray-200 ${task.status === 'Done' ? 'line-through opacity-40' : ''}`} value={task.title} onChange={e => updateTask(task.id, 'title', e.target.value)} />
+                                            </div>
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <select className="text-xs bg-gray-900 px-3 py-1.5 rounded-full border border-gray-800" value={task.category} onChange={e => updateTask(task.id, 'category', e.target.value)}><option>General</option><option>APS</option><option>Exam</option><option>Uni</option><option>LOR</option><option>Visa</option></select>
+                                                <select className={`text-xs px-3 py-1.5 rounded-full font-bold uppercase tracking-wider border ${task.priority === 'High' ? 'bg-red-900/20 text-red-400 border-red-900/50' : task.priority === 'Medium' ? 'bg-yellow-900/20 text-yellow-400 border-yellow-900/50' : 'bg-green-900/20 text-green-400 border-green-900/50'}`} value={task.priority} onChange={e => updateTask(task.id, 'priority', e.target.value)}><option className="bg-gray-900">High</option><option className="bg-gray-900">Medium</option><option className="bg-gray-900">Low</option></select>
+                                                <input type="date" className="text-xs bg-transparent border border-gray-700 rounded px-2 py-1 font-mono text-gray-300" value={task.dueDate} onChange={e => updateTask(task.id, 'dueDate', e.target.value)} />
+                                                <button onClick={() => deleteTask(task.id)} className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400 p-2">{Icons.Delete}</button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* --- DOC WALLET --- */}
+                        {view === 'docs' && (
+                            <div className="space-y-4">
+                                <div className="flex justify-between items-center">
+                                    <h2 className="text-2xl font-bold text-gray-100">Doc Wallet</h2>
+                                    <button onClick={addDoc} className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg shadow-[0_0_15px_rgba(79,70,229,0.4)] flex items-center gap-2 font-bold">
+                                        {Icons.Add} Add Doc
+                                    </button>
+                                </div>
+                                <div className="card overflow-hidden">
+                                    <table className="w-full text-sm text-left">
+                                        <thead className="text-xs uppercase font-bold border-b border-gray-800 text-gray-400">
+                                            <tr><th className="px-4 py-3">Document</th><th className="px-4 py-3">Type</th><th className="px-4 py-3">Ref ID</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Notes</th><th className="px-4 py-3"></th></tr>
                                         </thead>
-                                        <tbody className={`divide-y ${darkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
-                                            {data.universities.map(uni => (
-                                                <tr key={uni.id} className={darkMode ? 'bg-gray-800' : 'bg-white'}>
-                                                    <td className="p-2"><input className="w-full bg-transparent p-1 border rounded border-transparent hover:border-gray-300" value={uni.name} onChange={e => updateUni(uni.id, 'name', e.target.value)} /></td>
-                                                    <td className="p-2"><input className="w-full bg-transparent p-1 border rounded border-transparent hover:border-gray-300" value={uni.course} onChange={e => updateUni(uni.id, 'course', e.target.value)} /></td>
-                                                    <td className="p-2"><input className="w-24 bg-transparent p-1 border rounded border-transparent hover:border-gray-300" value={uni.location} onChange={e => updateUni(uni.id, 'location', e.target.value)} /></td>
-                                                    <td className="p-2"><input className="w-16 bg-transparent p-1 border rounded border-transparent hover:border-gray-300" value={uni.semesterFee} onChange={e => updateUni(uni.id, 'semesterFee', e.target.value)} /></td>
-                                                    <td className="p-2"><input type="date" className="bg-transparent p-1 border rounded border-transparent hover:border-gray-300" value={uni.deadline} onChange={e => updateUni(uni.id, 'deadline', e.target.value)} /></td>
-                                                    <td className="p-2">
-                                                        <select className="bg-transparent p-1 border rounded" value={uni.status} onChange={e => updateUni(uni.id, 'status', e.target.value)}>
-                                                            <option>Shortlisted</option><option>Applied</option><option>Admitted</option><option>Rejected</option>
-                                                        </select>
-                                                    </td>
-                                                    <td className="p-2 text-center">
-                                                        <button onClick={() => deleteUni(uni.id)} className="text-red-500 hover:text-red-700">{Icons.Delete}</button>
-                                                    </td>
+                                        <tbody className="divide-y divide-gray-800/50">
+                                            {data.documents.map(doc => (
+                                                <tr key={doc.id} className="hover:bg-gray-800/40">
+                                                    <td className="p-3"><input className="w-full bg-transparent font-medium text-gray-200" value={doc.name} onChange={e => updateDoc(doc.id, 'name', e.target.value)} /></td>
+                                                    <td className="p-3"><select className="bg-transparent text-xs opacity-70" value={doc.type} onChange={e => updateDoc(doc.id, 'type', e.target.value)}><option className="bg-gray-900">Application</option><option className="bg-gray-900">Identity</option><option className="bg-gray-900">Score Card</option><option className="bg-gray-900">Transcript</option><option className="bg-gray-900">Certificate</option></select></td>
+                                                    <td className="p-3"><input className="w-full bg-transparent font-mono text-xs text-cyan-400" placeholder="---" value={doc.refNumber} onChange={e => updateDoc(doc.id, 'refNumber', e.target.value)} /></td>
+                                                    <td className="p-3"><select className={`rounded px-2 py-1 text-xs font-bold uppercase ${getStatusColor(doc.status)}`} value={doc.status} onChange={e => updateDoc(doc.id, 'status', e.target.value)}><option className="bg-gray-900 text-gray-200">Not Started</option><option className="bg-gray-900 text-gray-200">Done</option></select></td>
+                                                    <td className="p-3"><input className="w-full bg-transparent text-xs italic opacity-50" value={doc.notes} onChange={e => updateDoc(doc.id, 'notes', e.target.value)} /></td>
+                                                    <td className="p-3 text-right"><button onClick={() => deleteDoc(doc.id)} className="text-gray-500 hover:text-red-400">{Icons.Delete}</button></td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -195,50 +428,34 @@
                             </div>
                         )}
 
-                        {/* --- TASK VIEW --- */}
-                        {view === 'tasks' && (
-                             <div className={cardClass}>
-                                <h2 className="text-xl font-bold mb-4">General Checklist</h2>
-                                {data.tasks.map(task => (
-                                    <div key={task.id} className="flex items-center gap-3 py-2 border-b dark:border-gray-700">
-                                        <input type="checkbox" checked={task.status === 'Done'} 
-                                            onChange={() => {
-                                                const newTasks = data.tasks.map(t => t.id === task.id ? {...t, status: t.status === 'Done' ? 'In Progress' : 'Done'} : t);
-                                                setData({...data, tasks: newTasks});
-                                            }} 
-                                        />
-                                        <div className="flex-1">
-                                            <span className={task.status === 'Done' ? 'line-through opacity-50' : ''}>{task.title}</span>
-                                        </div>
-                                        <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">{task.dueDate}</span>
-                                    </div>
-                                ))}
-                                <button 
-                                    onClick={() => setData({...data, tasks: [...data.tasks, {id: Date.now(), title: 'New Task', status: 'Not Started', dueDate: ''}]})}
-                                    className="mt-4 text-blue-500 text-sm hover:underline"
-                                >
-                                    + Add New Task
-                                </button>
-                             </div>
-                        )}
-                        
-                         {/* --- SOP VIEW --- */}
+                        {/* --- SOP --- */}
                         {view === 'sop' && (
-                             <div className={cardClass}>
-                                <h2 className="text-xl font-bold mb-4">Drafts & Notes</h2>
-                                <textarea 
-                                    className={`w-full h-64 p-4 rounded border ${darkMode ? 'bg-gray-900 border-gray-700' : 'bg-gray-50'}`}
-                                    placeholder="Start writing your SOP here..."
-                                    value={data.sops[0].content}
-                                    onChange={(e) => {
-                                        const newSops = [...data.sops];
-                                        newSops[0].content = e.target.value;
-                                        setData({...data, sops: newSops});
-                                    }}
-                                ></textarea>
-                             </div>
+                            <div className={`space-y-4 ${zenMode ? 'zen-mode' : ''}`}>
+                                <div className="flex justify-between items-center">
+                                    <h2 className="text-2xl font-bold flex items-center gap-2 text-gray-100">
+                                        {Icons.Docs} Statement of Purpose
+                                        {data.sops.locked && <span className="text-xs bg-red-900/50 text-red-400 border border-red-500/50 px-2 py-0.5 rounded-full uppercase font-bold animate-pulse">Locked</span>}
+                                    </h2>
+                                    <div className="flex gap-3">
+                                        <button onClick={toggleSopLock} className={`px-4 py-1.5 text-xs rounded-full font-bold uppercase tracking-wider ${data.sops.locked ? 'bg-red-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}>
+                                            {data.sops.locked ? 'Unlock' : 'Lock'}
+                                        </button>
+                                        <button onClick={() => setZenMode(!zenMode)} className="px-4 py-1.5 text-xs bg-blue-900/30 text-blue-400 border border-blue-800 rounded-full hover:bg-blue-800/50 font-bold uppercase">
+                                            {zenMode ? 'Exit Zen' : 'Zen Mode'}
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className={`relative group ${data.sops.locked ? 'cursor-not-allowed' : ''}`}>
+                                    <textarea 
+                                        disabled={data.sops.locked}
+                                        className={`w-full p-8 rounded-xl outline-none resize-none leading-relaxed text-lg font-serif transition-all ${zenMode ? 'h-full border-none bg-transparent' : 'h-[70vh] card border'} ${data.sops.locked ? 'bg-gray-900/50 text-gray-600 select-none' : 'bg-gray-900/40 focus:ring-2 focus:ring-cyan-500/30 text-gray-200'}`}
+                                        placeholder="Start writing..."
+                                        value={data.sops.content}
+                                        onChange={(e) => setData(prev => ({ ...prev, sops: { ...prev.sops, content: e.target.value } }))}
+                                    ></textarea>
+                                </div>
+                            </div>
                         )}
-
                     </main>
                 </div>
             );
