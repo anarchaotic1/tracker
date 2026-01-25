@@ -101,7 +101,8 @@
         };
 
         const defaultData = {
-            tasks: [{ id: 1, title: 'Welcome! Add your first task.', category: 'General', dueDate: '', priority: 'High', status: 'Not Started' }],
+            // Updated default task to have TODAY'S date so it shows up in Calendar immediately
+            tasks: [{ id: 1, title: 'Welcome! Add your first task.', category: 'General', dueDate: new Date().toISOString().split('T')[0], priority: 'High', status: 'Not Started' }],
             universities: [{ id: 1, name: 'TU Munich', course: 'Informatics', location: 'Munich', fees: '0', semesterFee: '152', portalId: '', portalLink: '', deadline: '2026-05-31', status: 'Shortlisted', locked: false }],
             documents: [],
             sops: { content: 'Start writing your SOP here...', locked: false },
@@ -157,7 +158,7 @@
             const deleteUni = (id) => { if(confirm("Delete?")) setData(p => ({...p, universities: p.universities.filter(u => u.id !== id)})); };
 
             const updateTask = (id, f, v) => { if(v === 'Done') triggerConfetti(); setData(p => ({ ...p, tasks: p.tasks.map(t => t.id === id ? { ...t, [f]: v } : t) })); };
-            const addTask = () => setData(p => ({ ...p, tasks: [...p.tasks, { id: Date.now(), title: 'New Task', category: 'General', dueDate: '', priority: 'Medium', status: 'Not Started' }] }));
+            const addTask = () => setData(p => ({ ...p, tasks: [...p.tasks, { id: Date.now(), title: 'New Task', category: 'General', dueDate: new Date().toISOString().split('T')[0], priority: 'Medium', status: 'Not Started' }] }));
             const deleteTask = (id) => { if(confirm("Delete?")) setData(p => ({...p, tasks: p.tasks.filter(t => t.id !== id)})); };
 
             const updateDoc = (id, f, v) => { if(v === 'Done') triggerConfetti(); setData(p => ({ ...p, documents: p.documents.map(d => d.id === id ? { ...d, [f]: v } : d) })); };
@@ -176,11 +177,11 @@
             const getCalendarItems = (day) => {
                 const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                 const items = [];
-                // Tasks
+                // 1. Add Tasks (Completed & Pending)
                 data.tasks.forEach(t => {
                     if(t.dueDate === dateStr) items.push({ type: 'task', ...t });
                 });
-                // Unis
+                // 2. Add Universities
                 data.universities.forEach(u => {
                     if(u.deadline === dateStr) items.push({ type: 'uni', ...u });
                 });
