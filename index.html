@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Germany MS Command Center</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <style>
+        body { background-color: #f3f4f6; }
+        .dark-mode { background-color: #1f2937; color: white; }
+        .dark-mode .card { background-color: #374151; border-color: #4b5563; }
+        .dark-mode input, .dark-mode select { background-color: #374151; color: white; border-color: #4b5563; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        // --- ICONS (Using Emojis to keep this file simple and copy-pasteable) ---
+        const Icons = {
+            Dashboard: "📊", Grid: "📅", Uni: "🏛️", Todo: "✅", SOP: "📝", LOR: "🤝", Notes: "🧠", 
+            Sun: "☀️", Moon: "🌙", Add: "➕", Delete: "🗑️", Search: "🔍"
+        };
+
+        // --- INITIAL DATA ---
+        const initialData = {
+            tasks: [
+                { id: 1, title: 'APS Certificate', category: 'APS', dueDate: '2025-03-01', priority: 'High', status: 'In Progress' },
+                { id: 2, title: 'IELTS Exam', category: 'Exam', dueDate: '2025-04-15', priority: 'High', status: 'Not Started' },
+            ],
+            universities: [
+                { id: 1, name: 'TU Munich', course: 'M.Sc. Informatics', location: 'Munich', fees: '0', semesterFee: '152', deadline: '2025-05-31', status: 'Shortlisted', notes: 'Requires GRE' },
+                { id: 2, name: 'RWTH Aachen', course: 'Software Systems', location: 'Aachen', fees: '0', semesterFee: '300', deadline: '2025-07-15', status: 'Not Started', notes: 'Check language reqs' }
+            ],
+            sops: [{ id: 1, title: 'Main Motivation', content: 'I have always been fascinated by...' }],
+            lors: [{ id: 1, name: 'Prof. Kumar', status: 'Asked' }],
+            notes: [],
+            settings: { theme: 'light' }
+        };
+
+        // --- MAIN APP COMPONENT ---
+        const GermanyApp = () => {
+            const [data, setData] = useState(initialData);
+            const [view, setView] = useState('dashboard');
+            const [darkMode, setDarkMode] = useState(false);
+
+            // Load from Local Storage on start
+            useEffect(() => {
+                const saved = localStorage.getItem('germany-ms-db');
+                if (saved) setData(JSON.parse(saved));
+            }, []);
+
+            // Save to Local Storage on change
+            useEffect(() => {
+                localStorage.setItem('germany-ms-db', JSON.stringify(data));
+            }, [data]);
+
+            // Helper to update state
+            const updateUni = (id, field, value) => {
+                setData(prev => ({
+                    ...prev,
+                    universities: prev.universities.map(u => u.id === id ? { ...u, [field]: value } : u)
+                }));
+            };
+
+            const addUni = () => {
+                const newUni = { 
+                    id: Date.now(), name: 'New University', course: 'CS', location: 'City', 
+                    fees: '0', semesterFee: '0', deadline: '', status: 'Shortlisted', notes: '' 
+                };
+                setData(prev => ({ ...prev, universities: [...prev.universities, newUni] }));
+            };
+             const deleteUni = (id) => {
+                if(confirm("Delete this university?")) {
+                    setData(prev => ({...prev, universities: prev.universities.filter(u => u.id !== id)}));
+                }
+            };
+
+            const themeClass = darkMode ? "dark-mode min-h-screen transition-colors" : "bg-gray-100 min-h-screen transition-colors text-gray-900";
+            const cardClass = darkMode ? "card p-6 rounded-lg shadow-md" : "bg-white p-6 rounded-lg shadow-md border border-gray-200";
+
+            return (
+                <div className={themeClass}>
+                    {/* HEADER */}
+                    <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-b sticky top-0 z-50`}>
+                        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+                            <div>
+                                <h1 className="text-2xl font-bold flex items-center gap-2">🇩🇪 Germany MS Tracker</h1>
+                                <p className="text-xs opacity-60">Winter 2026 Intake</p>
+                            </div>
+                            <button onClick={() => setDarkMode(!darkMode)} className="text-xl p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700">
+                                {darkMode ? Icons.Sun : Icons.Moon}
+                            </button>
+                        </div>
+                        {/* NAV TABS */}
+                        <div className="max-w-7xl mx-auto px-4 flex gap-6 overflow-x-auto text-sm font-medium">
+                            {[
+                                {id: 'dashboard', label: 'Dashboard', icon: Icons.Dashboard},
+                                {id: 'universities', label: 'Universities', icon: Icons.Uni},
+                                {id: 'tasks', label: 'Tasks', icon: Icons.Grid},
+                                {id: 'sop', label: 'SOP & LOR', icon: Icons.SOP},
+                            ].map(tab => (
+                                <button 
+                                    key={tab.id}
+                                    onClick={() => setView(tab.id)}
+                                    className={`py-3 border-b-2 flex items-center gap-2 ${view === tab.id ? 'border-blue-600 text-blue-600' : 'border-transparent opacity-60'}`}
+                                >
+                                    <span>{tab.icon}</span> {tab.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* MAIN CONTENT */}
+                    <main className="max-w-7xl mx-auto px-4 py-8">
+                        
+                        {/* --- DASHBOARD VIEW --- */}
+                        {view === 'dashboard' && (
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className={`${cardClass} border-l-4 border-blue-500`}>
+                                    <h3 className="opacity-70 text-sm font-bold uppercase">Universities Shortlisted</h3>
+                                    <p className="text-4xl font-bold mt-2">{data.universities.length}</p>
+                                </div>
+                                <div className={`${cardClass} border-l-4 border-green-500`}>
+                                    <h3 className="opacity-70 text-sm font-bold uppercase">Applications Done</h3>
+                                    <p className="text-4xl font-bold mt-2">{data.universities.filter(u => u.status === 'Applied').length}</p>
+                                </div>
+                                <div className={`${cardClass} border-l-4 border-yellow-500`}>
+                                    <h3 className="opacity-70 text-sm font-bold uppercase">Days to Next Deadline</h3>
+                                    <p className="text-4xl font-bold mt-2">
+                                        {(() => {
+                                            const dates = data.universities
+                                                .map(u => u.deadline)
+                                                .filter(d => d)
+                                                .map(d => new Date(d))
+                                                .filter(d => d > new Date())
+                                                .sort((a,b) => a - b);
+                                            if (dates.length === 0) return "-";
+                                            return Math.ceil((dates[0] - new Date()) / (1000 * 60 * 60 * 24));
+                                        })()}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* --- UNIVERSITY VIEW (NEW FEATURE) --- */}
+                        {view === 'universities' && (
+                            <div className="space-y-4">
+                                <div className="flex justify-between items-center">
+                                    <h2 className="text-xl font-bold">University Shortlist</h2>
+                                    <button onClick={addUni} className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 flex items-center gap-2">
+                                        {Icons.Add} Add University
+                                    </button>
+                                </div>
+                                <div className="overflow-x-auto rounded-lg shadow border border-gray-200 dark:border-gray-700">
+                                    <table className={`w-full text-sm text-left ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                                        <thead className={`text-xs uppercase ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                                            <tr>
+                                                <th className="px-4 py-3">University Name</th>
+                                                <th className="px-4 py-3">Course</th>
+                                                <th className="px-4 py-3">Location</th>
+                                                <th className="px-4 py-3">Fees (€/sem)</th>
+                                                <th className="px-4 py-3">Deadline</th>
+                                                <th className="px-4 py-3">Status</th>
+                                                <th className="px-4 py-3">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className={`divide-y ${darkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
+                                            {data.universities.map(uni => (
+                                                <tr key={uni.id} className={darkMode ? 'bg-gray-800' : 'bg-white'}>
+                                                    <td className="p-2"><input className="w-full bg-transparent p-1 border rounded border-transparent hover:border-gray-300" value={uni.name} onChange={e => updateUni(uni.id, 'name', e.target.value)} /></td>
+                                                    <td className="p-2"><input className="w-full bg-transparent p-1 border rounded border-transparent hover:border-gray-300" value={uni.course} onChange={e => updateUni(uni.id, 'course', e.target.value)} /></td>
+                                                    <td className="p-2"><input className="w-24 bg-transparent p-1 border rounded border-transparent hover:border-gray-300" value={uni.location} onChange={e => updateUni(uni.id, 'location', e.target.value)} /></td>
+                                                    <td className="p-2"><input className="w-16 bg-transparent p-1 border rounded border-transparent hover:border-gray-300" value={uni.semesterFee} onChange={e => updateUni(uni.id, 'semesterFee', e.target.value)} /></td>
+                                                    <td className="p-2"><input type="date" className="bg-transparent p-1 border rounded border-transparent hover:border-gray-300" value={uni.deadline} onChange={e => updateUni(uni.id, 'deadline', e.target.value)} /></td>
+                                                    <td className="p-2">
+                                                        <select className="bg-transparent p-1 border rounded" value={uni.status} onChange={e => updateUni(uni.id, 'status', e.target.value)}>
+                                                            <option>Shortlisted</option><option>Applied</option><option>Admitted</option><option>Rejected</option>
+                                                        </select>
+                                                    </td>
+                                                    <td className="p-2 text-center">
+                                                        <button onClick={() => deleteUni(uni.id)} className="text-red-500 hover:text-red-700">{Icons.Delete}</button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* --- TASK VIEW --- */}
+                        {view === 'tasks' && (
+                             <div className={cardClass}>
+                                <h2 className="text-xl font-bold mb-4">General Checklist</h2>
+                                {data.tasks.map(task => (
+                                    <div key={task.id} className="flex items-center gap-3 py-2 border-b dark:border-gray-700">
+                                        <input type="checkbox" checked={task.status === 'Done'} 
+                                            onChange={() => {
+                                                const newTasks = data.tasks.map(t => t.id === task.id ? {...t, status: t.status === 'Done' ? 'In Progress' : 'Done'} : t);
+                                                setData({...data, tasks: newTasks});
+                                            }} 
+                                        />
+                                        <div className="flex-1">
+                                            <span className={task.status === 'Done' ? 'line-through opacity-50' : ''}>{task.title}</span>
+                                        </div>
+                                        <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">{task.dueDate}</span>
+                                    </div>
+                                ))}
+                                <button 
+                                    onClick={() => setData({...data, tasks: [...data.tasks, {id: Date.now(), title: 'New Task', status: 'Not Started', dueDate: ''}]})}
+                                    className="mt-4 text-blue-500 text-sm hover:underline"
+                                >
+                                    + Add New Task
+                                </button>
+                             </div>
+                        )}
+                        
+                         {/* --- SOP VIEW --- */}
+                        {view === 'sop' && (
+                             <div className={cardClass}>
+                                <h2 className="text-xl font-bold mb-4">Drafts & Notes</h2>
+                                <textarea 
+                                    className={`w-full h-64 p-4 rounded border ${darkMode ? 'bg-gray-900 border-gray-700' : 'bg-gray-50'}`}
+                                    placeholder="Start writing your SOP here..."
+                                    value={data.sops[0].content}
+                                    onChange={(e) => {
+                                        const newSops = [...data.sops];
+                                        newSops[0].content = e.target.value;
+                                        setData({...data, sops: newSops});
+                                    }}
+                                ></textarea>
+                             </div>
+                        )}
+
+                    </main>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<GermanyApp />);
+    </script>
+</body>
+</html>
