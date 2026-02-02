@@ -12,15 +12,9 @@
   <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
 
-  <!-- Babel (SAFE CONFIG) -->
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-  <!-- Firebase COMPAT (IMPORTANT) -->
+  <!-- Firebase COMPAT -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-
-  <!-- Confetti -->
-  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
   <style>
     body {
@@ -40,8 +34,7 @@
 <body>
   <div id="root"></div>
 
-  <!-- APP CODE -->
-  <script type="text/babel" data-presets="react">
+  <script>
     /***********************
      * FIREBASE INIT
      ***********************/
@@ -58,48 +51,16 @@
     const db = firebase.firestore();
     const DOC_ID = "germany-master-data";
 
-    const { useState, useEffect } = React;
-
-    /***********************
-     * DEFAULT DATA
-     ***********************/
-    const defaultData = {
-      tasks: [
-        {
-          id: 1,
-          title: "Welcome! Add your first task.",
-          category: "General",
-          dueDate: new Date().toISOString().split("T")[0],
-          priority: "High",
-          status: "Not Started"
-        }
-      ],
-      universities: [
-        {
-          id: 1,
-          name: "TU Munich",
-          course: "Informatics",
-          location: "Munich",
-          semesterFee: "152",
-          portalId: "",
-          portalLink: "",
-          deadline: "2026-05-31",
-          status: "Shortlisted",
-          locked: false
-        }
-      ],
-      documents: [],
-      sops: { content: "Start writing your SOP here...", locked: false }
-    };
+    const e = React.createElement;
 
     /***********************
      * APP
      ***********************/
     function GermanyApp() {
-      const [data, setData] = useState(null);
-      const [status, setStatus] = useState("Connecting…");
+      const [data, setData] = React.useState(null);
+      const [status, setStatus] = React.useState("Connecting…");
 
-      useEffect(() => {
+      React.useEffect(() => {
         const ref = db.collection("users").doc(DOC_ID);
 
         const unsub = ref.onSnapshot(
@@ -108,8 +69,18 @@
               setData(snap.data());
               setStatus("Synced ☁️");
             } else {
-              ref.set(defaultData);
-              setData(defaultData);
+              const init = {
+                tasks: [
+                  {
+                    id: 1,
+                    title: "Welcome! Add your first task.",
+                    status: "Not Started"
+                  }
+                ],
+                sops: { content: "Start writing your SOP here..." }
+              };
+              ref.set(init);
+              setData(init);
               setStatus("Created ☁️");
             }
           },
@@ -122,81 +93,56 @@
         return () => unsub();
       }, []);
 
-      useEffect(() => {
-        if (!data) return;
-        const t = setTimeout(() => {
-          db.collection("users").doc(DOC_ID).set(data);
-        }, 1200);
-        return () => clearTimeout(t);
-      }, [data]);
-
       if (!data) {
-        return (
-          <div className="min-h-screen flex items-center justify-center text-cyan-400">
-            Syncing…
-          </div>
+        return e(
+          "div",
+          { className: "min-h-screen flex items-center justify-center text-cyan-400" },
+          "Syncing…"
         );
       }
 
-      return (
-        <div className="max-w-4xl mx-auto p-6 space-y-6">
-          <h1 className="text-3xl font-bold">🇩🇪 MS Command Center</h1>
-          <p className="text-xs text-cyan-400">{status}</p>
+      return e(
+        "div",
+        { className: "max-w-3xl mx-auto p-6 space-y-6" },
 
-          <div className="card">
-            <h2 className="font-bold mb-3">Tasks</h2>
-            <div className="space-y-2">
-              {data.tasks.map(t => (
-                <div key={t.id} className="flex justify-between">
-                  <span>{t.title}</span>
-                  <span className="text-xs opacity-60">{t.status}</span>
-                </div>
-              ))}
-            </div>
+        e("h1", { className: "text-3xl font-bold" }, "🇩🇪 MS Command Center"),
+        e("p", { className: "text-xs text-cyan-400" }, status),
 
-            <button
-              className="mt-4 px-4 py-2 bg-cyan-600 rounded"
-              onClick={() =>
-                setData(p => ({
-                  ...p,
-                  tasks: [
-                    ...p.tasks,
-                    {
-                      id: Date.now(),
-                      title: "New Task",
-                      category: "General",
-                      dueDate: new Date().toISOString().split("T")[0],
-                      priority: "Medium",
-                      status: "Not Started"
-                    }
-                  ]
-                }))
-              }
-            >
-              Add Task
-            </button>
-          </div>
+        e(
+          "div",
+          { className: "card" },
+          e("h2", { className: "font-bold mb-3" }, "Tasks"),
+          ...data.tasks.map(t =>
+            e(
+              "div",
+              { key: t.id, className: "flex justify-between mb-1" },
+              e("span", null, t.title),
+              e("span", { className: "text-xs opacity-60" }, t.status)
+            )
+          )
+        ),
 
-          <div className="card">
-            <h2 className="font-bold mb-2">SOP</h2>
-            <textarea
-              className="w-full p-3 bg-gray-900 rounded"
-              rows="6"
-              value={data.sops.content}
-              onChange={e =>
-                setData(p => ({
-                  ...p,
-                  sops: { ...p.sops, content: e.target.value }
-                }))
-              }
-            />
-          </div>
-        </div>
+        e(
+          "div",
+          { className: "card" },
+          e("h2", { className: "font-bold mb-2" }, "SOP"),
+          e("textarea", {
+            className: "w-full p-3 bg-gray-900 rounded",
+            rows: 6,
+            value: data.sops.content,
+            onChange: ev =>
+              setData(p => ({
+                ...p,
+                sops: { content: ev.target.value }
+              }))
+          })
+        )
       );
     }
 
-    ReactDOM.createRoot(document.getElementById("root")).render(<GermanyApp />);
+    ReactDOM.createRoot(document.getElementById("root")).render(
+      React.createElement(GermanyApp)
+    );
   </script>
 </body>
 </html>
-
