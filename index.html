@@ -12,19 +12,20 @@
   <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
 
-  <!-- Firebase COMPAT -->
+  <!-- Firebase COMPAT (NO MODULES) -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
   <style>
     body {
-      background: #020617;
+      font-family: Inter, system-ui, sans-serif;
+      background-color: #020617;
       color: #f1f5f9;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont;
+      min-height: 100vh;
     }
     .card {
-      background: rgba(15, 23, 42, 0.7);
-      border: 1px solid rgba(56, 189, 248, 0.2);
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(56, 189, 248, 0.15);
       border-radius: 16px;
       padding: 16px;
     }
@@ -32,117 +33,91 @@
 </head>
 
 <body>
-  <div id="root"></div>
+<div id="root"></div>
 
-  <script>
-    /***********************
-     * FIREBASE INIT
-     ***********************/
-    const firebaseConfig = {
-      apiKey: "AIzaSyDPxDlF_vmHHlk1m4fKKw40_UIWBwa_ymo",
-      authDomain: "tracker-c3912.firebaseapp.com",
-      projectId: "tracker-c3912",
-      storageBucket: "tracker-c3912.firebasestorage.app",
-      messagingSenderId: "84396429933",
-      appId: "1:84396429933:web:a64708632d20c73ce62564"
-    };
+<script>
+  /******** FIREBASE INIT ********/
+  const firebaseConfig = {
+    apiKey: "PASTE_YOUR_API_KEY_HERE",
+    authDomain: "tracker-c3912.firebaseapp.com",
+    projectId: "tracker-c3912",
+    storageBucket: "tracker-c3912.firebasestorage.app",
+    messagingSenderId: "84396429933",
+    appId: "1:84396429933:web:a64708632d20c73ce62564"
+  };
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-    const DOC_ID = "germany-master-data";
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+  const DOC_ID = "germany-master-data";
 
-    const e = React.createElement;
+  const e = React.createElement;
 
-    /***********************
-     * APP
-     ***********************/
-    function GermanyApp() {
-      const [data, setData] = React.useState(null);
-      const [status, setStatus] = React.useState("Connecting…");
+  function GermanyApp() {
+    const [data, setData] = React.useState(null);
+    const [status, setStatus] = React.useState("Connecting…");
 
-      React.useEffect(() => {
-        const ref = db.collection("users").doc(DOC_ID);
+    React.useEffect(() => {
+      const ref = db.collection("users").doc(DOC_ID);
 
-        const unsub = ref.onSnapshot(
-          snap => {
-            if (snap.exists) {
-              setData(snap.data());
-              setStatus("Synced ☁️");
-            } else {
-              const init = {
-                tasks: [
-                  {
-                    id: 1,
-                    title: "Welcome! Add your first task.",
-                    status: "Not Started"
-                  }
-                ],
-                sops: { content: "Start writing your SOP here..." }
-              };
-              ref.set(init);
-              setData(init);
-              setStatus("Created ☁️");
-            }
-          },
-          err => {
-            console.error(err);
-            setStatus("Offline ⚠️");
+      const unsub = ref.onSnapshot(
+        snap => {
+          if (snap.exists) {
+            setData(snap.data());
+            setStatus("Synced ☁️");
+          } else {
+            const init = {
+              tasks: [{ id: 1, title: "Welcome! Add your first task.", status: "Not Started" }],
+              sops: { content: "Start writing your SOP here..." }
+            };
+            ref.set(init);
+            setData(init);
+            setStatus("Created ☁️");
           }
-        );
-
-        return () => unsub();
-      }, []);
-
-      if (!data) {
-        return e(
-          "div",
-          { className: "min-h-screen flex items-center justify-center text-cyan-400" },
-          "Syncing…"
-        );
-      }
-
-      return e(
-        "div",
-        { className: "max-w-3xl mx-auto p-6 space-y-6" },
-
-        e("h1", { className: "text-3xl font-bold" }, "🇩🇪 MS Command Center"),
-        e("p", { className: "text-xs text-cyan-400" }, status),
-
-        e(
-          "div",
-          { className: "card" },
-          e("h2", { className: "font-bold mb-3" }, "Tasks"),
-          ...data.tasks.map(t =>
-            e(
-              "div",
-              { key: t.id, className: "flex justify-between mb-1" },
-              e("span", null, t.title),
-              e("span", { className: "text-xs opacity-60" }, t.status)
-            )
-          )
-        ),
-
-        e(
-          "div",
-          { className: "card" },
-          e("h2", { className: "font-bold mb-2" }, "SOP"),
-          e("textarea", {
-            className: "w-full p-3 bg-gray-900 rounded",
-            rows: 6,
-            value: data.sops.content,
-            onChange: ev =>
-              setData(p => ({
-                ...p,
-                sops: { content: ev.target.value }
-              }))
-          })
-        )
+        },
+        err => {
+          console.error(err);
+          setStatus("Offline ⚠️");
+        }
       );
+
+      return () => unsub();
+    }, []);
+
+    if (!data) {
+      return e("div", { className: "min-h-screen flex items-center justify-center text-cyan-400" }, "Syncing…");
     }
 
-    ReactDOM.createRoot(document.getElementById("root")).render(
-      React.createElement(GermanyApp)
+    return e(
+      "div",
+      { className: "max-w-4xl mx-auto p-6 space-y-6" },
+      e("h1", { className: "text-3xl font-bold" }, "🇩🇪 MS Command Center"),
+      e("p", { className: "text-xs text-cyan-400" }, status),
+      e(
+        "div",
+        { className: "card" },
+        e("h2", { className: "font-bold mb-2" }, "Tasks"),
+        ...data.tasks.map(t =>
+          e("div", { key: t.id, className: "flex justify-between" },
+            e("span", null, t.title),
+            e("span", { className: "text-xs opacity-60" }, t.status)
+          )
+        )
+      ),
+      e(
+        "div",
+        { className: "card" },
+        e("h2", { className: "font-bold mb-2" }, "SOP"),
+        e("textarea", {
+          className: "w-full p-3 bg-gray-900 rounded",
+          rows: 6,
+          value: data.sops.content,
+          onChange: ev => setData(p => ({ ...p, sops: { content: ev.target.value } }))
+        })
+      )
     );
-  </script>
+  }
+
+  ReactDOM.createRoot(document.getElementById("root")).render(e(GermanyApp));
+</script>
 </body>
 </html>
