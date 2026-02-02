@@ -1,197 +1,201 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Germany MS Command Center - Cloud Live</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Germany MS Command Center</title>
 
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
 
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #020617;
-            color: #f1f5f9;
-            min-height: 100vh;
-        }
-        .card {
-            background: rgba(15, 23, 42, 0.6);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(56, 189, 248, 0.15);
-            border-radius: 16px;
-        }
-    </style>
+  <!-- React -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+
+  <!-- Babel (SAFE CONFIG) -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Firebase COMPAT (IMPORTANT) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+  <!-- Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <style>
+    body {
+      background: #020617;
+      color: #f1f5f9;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont;
+    }
+    .card {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      border-radius: 16px;
+      padding: 16px;
+    }
+  </style>
 </head>
 
 <body>
-<div id="root"></div>
+  <div id="root"></div>
 
-<script type="text/babel" data-type="module">
-/* ==========================
-   FIREBASE IMPORTS
-========================== */
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+  <!-- APP CODE -->
+  <script type="text/babel" data-presets="react">
+    /***********************
+     * FIREBASE INIT
+     ***********************/
+    const firebaseConfig = {
+      apiKey: "PASTE_YOUR_API_KEY_HERE",
+      authDomain: "tracker-c3912.firebaseapp.com",
+      projectId: "tracker-c3912",
+      storageBucket: "tracker-c3912.firebasestorage.app",
+      messagingSenderId: "84396429933",
+      appId: "1:84396429933:web:a64708632d20c73ce62564"
+    };
 
-/* ==========================
-   FIREBASE CONFIG
-   🔴 REPLACE apiKey ONLY
-========================== */
-const firebaseConfig = {
-    apiKey: "AIzaSyDPxDlF_vmHHlk1m4fKKw40_UIWBwa_ymo",
-    authDomain: "tracker-c3912.firebaseapp.com",
-    projectId: "tracker-c3912",
-    storageBucket: "tracker-c3912.firebasestorage.app",
-    messagingSenderId: "84396429933",
-    appId: "1:84396429933:web:a64708632d20c73ce62564"
-};
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const DOC_ID = "germany-master-data";
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const DOC_ID = "germany-master-data";
+    const { useState, useEffect } = React;
 
-const { useState, useEffect } = React;
-
-/* ==========================
-   DEFAULT DATA
-========================== */
-const defaultData = {
-    tasks: [
+    /***********************
+     * DEFAULT DATA
+     ***********************/
+    const defaultData = {
+      tasks: [
         {
-            id: 1,
-            title: "Welcome! Add your first task.",
-            category: "General",
-            dueDate: new Date().toISOString().split("T")[0],
-            priority: "High",
-            status: "Not Started"
+          id: 1,
+          title: "Welcome! Add your first task.",
+          category: "General",
+          dueDate: new Date().toISOString().split("T")[0],
+          priority: "High",
+          status: "Not Started"
         }
-    ],
-    universities: [
+      ],
+      universities: [
         {
-            id: 1,
-            name: "TU Munich",
-            course: "Informatics",
-            location: "Munich",
-            semesterFee: "152",
-            portalId: "",
-            portalLink: "",
-            deadline: "2026-05-31",
-            status: "Shortlisted",
-            locked: false
+          id: 1,
+          name: "TU Munich",
+          course: "Informatics",
+          location: "Munich",
+          semesterFee: "152",
+          portalId: "",
+          portalLink: "",
+          deadline: "2026-05-31",
+          status: "Shortlisted",
+          locked: false
         }
-    ],
-    documents: [],
-    sops: { content: "Start writing your SOP here...", locked: false }
-};
+      ],
+      documents: [],
+      sops: { content: "Start writing your SOP here...", locked: false }
+    };
 
-/* ==========================
-   APP
-========================== */
-function GermanyApp() {
-    const [data, setData] = useState(null);
-    const [status, setStatus] = useState("Connecting...");
+    /***********************
+     * APP
+     ***********************/
+    function GermanyApp() {
+      const [data, setData] = useState(null);
+      const [status, setStatus] = useState("Connecting…");
 
-    useEffect(() => {
-        const ref = doc(db, "users", DOC_ID);
-        const unsub = onSnapshot(
-            ref,
-            snap => {
-                if (snap.exists()) {
-                    setData(snap.data());
-                    setStatus("Synced ☁️");
-                } else {
-                    setDoc(ref, defaultData);
-                    setData(defaultData);
-                    setStatus("Created ☁️");
-                }
-            },
-            err => {
-                console.error(err);
-                setStatus("Offline ⚠️");
+      useEffect(() => {
+        const ref = db.collection("users").doc(DOC_ID);
+
+        const unsub = ref.onSnapshot(
+          snap => {
+            if (snap.exists) {
+              setData(snap.data());
+              setStatus("Synced ☁️");
+            } else {
+              ref.set(defaultData);
+              setData(defaultData);
+              setStatus("Created ☁️");
             }
+          },
+          err => {
+            console.error(err);
+            setStatus("Offline ⚠️");
+          }
         );
-        return () => unsub();
-    }, []);
 
-    useEffect(() => {
+        return () => unsub();
+      }, []);
+
+      useEffect(() => {
         if (!data) return;
         const t = setTimeout(() => {
-            setDoc(doc(db, "users", DOC_ID), data);
+          db.collection("users").doc(DOC_ID).set(data);
         }, 1200);
         return () => clearTimeout(t);
-    }, [data]);
+      }, [data]);
 
-    if (!data) {
+      if (!data) {
         return (
-            <div className="min-h-screen flex items-center justify-center text-cyan-400">
-                Syncing…
-            </div>
+          <div className="min-h-screen flex items-center justify-center text-cyan-400">
+            Syncing…
+          </div>
         );
+      }
+
+      return (
+        <div className="max-w-4xl mx-auto p-6 space-y-6">
+          <h1 className="text-3xl font-bold">🇩🇪 MS Command Center</h1>
+          <p className="text-xs text-cyan-400">{status}</p>
+
+          <div className="card">
+            <h2 className="font-bold mb-3">Tasks</h2>
+            <div className="space-y-2">
+              {data.tasks.map(t => (
+                <div key={t.id} className="flex justify-between">
+                  <span>{t.title}</span>
+                  <span className="text-xs opacity-60">{t.status}</span>
+                </div>
+              ))}
+            </div>
+
+            <button
+              className="mt-4 px-4 py-2 bg-cyan-600 rounded"
+              onClick={() =>
+                setData(p => ({
+                  ...p,
+                  tasks: [
+                    ...p.tasks,
+                    {
+                      id: Date.now(),
+                      title: "New Task",
+                      category: "General",
+                      dueDate: new Date().toISOString().split("T")[0],
+                      priority: "Medium",
+                      status: "Not Started"
+                    }
+                  ]
+                }))
+              }
+            >
+              Add Task
+            </button>
+          </div>
+
+          <div className="card">
+            <h2 className="font-bold mb-2">SOP</h2>
+            <textarea
+              className="w-full p-3 bg-gray-900 rounded"
+              rows="6"
+              value={data.sops.content}
+              onChange={e =>
+                setData(p => ({
+                  ...p,
+                  sops: { ...p.sops, content: e.target.value }
+                }))
+              }
+            />
+          </div>
+        </div>
+      );
     }
 
-    return (
-        <div className="p-6 max-w-4xl mx-auto space-y-6">
-            <h1 className="text-3xl font-bold">🇩🇪 MS Command Center</h1>
-            <p className="text-xs text-cyan-400">{status}</p>
-
-            <div className="card p-4">
-                <h2 className="font-bold mb-2">Tasks</h2>
-                <div className="space-y-2">
-                    {data.tasks.map(t => (
-                        <div key={t.id} className="flex justify-between">
-                            <span>{t.title}</span>
-                            <span className="text-xs opacity-60">{t.status}</span>
-                        </div>
-                    ))}
-                </div>
-
-                <button
-                    className="mt-4 px-3 py-1 bg-cyan-600 rounded"
-                    onClick={() =>
-                        setData(p => ({
-                            ...p,
-                            tasks: [
-                                ...p.tasks,
-                                {
-                                    id: Date.now(),
-                                    title: "New Task",
-                                    category: "General",
-                                    dueDate: new Date().toISOString().split("T")[0],
-                                    priority: "Medium",
-                                    status: "Not Started"
-                                }
-                            ]
-                        }))
-                    }
-                >
-                    Add Task
-                </button>
-            </div>
-
-            <div className="card p-4">
-                <h2 className="font-bold mb-2">SOP</h2>
-                <textarea
-                    className="w-full p-3 bg-gray-900 rounded"
-                    rows="6"
-                    value={data.sops.content}
-                    onChange={e =>
-                        setData(p => ({
-                            ...p,
-                            sops: { ...p.sops, content: e.target.value }
-                        }))
-                    }
-                />
-            </div>
-        </div>
-    );
-}
-
-ReactDOM.createRoot(document.getElementById("root")).render(<GermanyApp />);
-</script>
+    ReactDOM.createRoot(document.getElementById("root")).render(<GermanyApp />);
+  </script>
 </body>
 </html>
